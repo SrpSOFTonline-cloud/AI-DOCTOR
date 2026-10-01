@@ -1,625 +1,964 @@
 <!DOCTYPE html>
-<html lang="bn" class="scroll-smooth">
+<html lang="bn" class="h-full font-sans antialiased">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI DOCTOR - এআই হেল্থ অ্যান্ড রিপোর্ট অ্যানালাইজার</title>
+    <title>AI DOCTOR - Enterprise AI Healthcare & Diagnostic Platform</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts: Hind Siliguri for Bengali -->
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Hind Siliguri for Bengali & Inter for Numeric Data -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js for Vitals Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        medical: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0284c7',
-                            600: '#0369a1',
-                            700: '#075985',
-                            800: '#0c4a6e',
+                        navy: {
+                            800: '#0B192C',
+                            900: '#030A16',
+                            950: '#01050D'
                         },
-                        health: {
-                            500: '#10b981',
-                            600: '#059669',
+                        cyan: {
+                            400: '#38BDF8',
+                            500: '#0EA5E9',
+                            600: '#0284C7'
+                        },
+                        emerald: {
+                            400: '#34D399',
+                            500: '#10B981',
+                            600: '#059669'
                         }
                     },
                     fontFamily: {
-                        sans: ['Hind Siliguri', 'sans-serif'],
+                        sans: ['Hind Siliguri', 'Inter', 'sans-serif'],
+                        number: ['Inter', 'sans-serif']
                     }
                 }
             }
         }
     </script>
     <style>
-        body {
-            font-family: 'Hind Siliguri', sans-serif;
+        /* Glassmorphism & Custom Scrollbar Styling */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .dark .glass-panel {
+            background: rgba(11, 25, 44, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(248, 250, 252, 0.6);
+            backdrop-filter: blur(8px);
+        }
+        .dark .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .dark ::webkit-scrollbar-thumb {
+            background: #334155;
+        }
+        .waveform-bar {
+            animation: pulseWave 1.2s infinite ease-in-out;
+        }
+        @keyframes pulseWave {
+            0%, 100% { height: 8px; }
+            50% { height: 28px; }
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
 
-    <!-- Navbar Header -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <!-- Logo -->
+<body class="bg-slate-100 dark:bg-navy-950 text-slate-800 dark:text-slate-100 h-full transition-colors duration-300">
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="w-64 bg-slate-900 text-white flex flex-col z-30 transition-all duration-300 flex-shrink-0 border-r border-slate-800">
+            <!-- App Logo -->
+            <div class="h-20 flex items-center px-6 border-b border-slate-800/80 justify-between">
                 <div class="flex items-center space-x-3">
-                    <div class="bg-medical-600 text-white p-2.5 rounded-xl shadow-md">
-                        <i class="fa-solid font-bold fa-user-doctor text-2xl"></i>
+                    <div class="bg-gradient-to-tr from-cyan-600 to-emerald-500 p-2.5 rounded-xl shadow-lg shadow-cyan-500/20">
+                        <i class="fa-solid fa-brain text-white text-xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                            AI DOCTOR <span class="text-xs bg-medical-100 text-medical-700 px-2 py-0.5 rounded-full border border-medical-200 font-semibold">FREE BETA</span>
-                        </h1>
-                        <p class="text-xs text-slate-500">আপনার কৃত্রিম বুদ্ধিমত্তা চালিত স্বাস্থ্য সহকারী</p>
+                        <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">AI DOCTOR</span>
+                        <span class="block text-[10px] uppercase font-bold text-cyan-400 tracking-wider">Business Executive</span>
                     </div>
-                </div>
-
-                <!-- Action Button for Free Setup -->
-                <div>
-                    <button onclick="toggleModal('freeGuideModal')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all shadow-sm">
-                        <i class="fa-solid fa-rocket"></i>
-                        <span>ফ্রি হোস্টিং নির্দেশিকা</span>
-                    </button>
                 </div>
             </div>
-        </div>
-    </header>
 
-    <!-- Disclaimer Banner -->
-    <div class="bg-amber-50 border-b border-amber-200 py-3 px-4 text-center">
-        <div class="max-w-7xl mx-auto flex items-center justify-center gap-2 text-amber-800 text-xs sm:text-sm">
-            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-base flex-shrink-0"></i>
-            <span><strong>সতর্কবার্তা:</strong> AI DOCTOR শুধুমাত্র তথ্য প্রদান ও পরামর্শ সহায়তার জন্য। এটি কোনো নিবন্ধিত ডাক্তারের বিকল্প নয়। জরুরি প্রয়োজনে নিকটস্থ হাসপাতালে যোগাযোগ করুন।</span>
-        </div>
-    </div>
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+                <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">প্রধান মডিউলসমূহ</p>
+                
+                <a href="#analyzer" onclick="switchMainTab('analyzer')" id="nav-analyzer" class="nav-item flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-cyan-600 to-cyan-700 text-white shadow-md shadow-cyan-900/30">
+                    <i class="fa-solid fa-file-waveform text-lg"></i>
+                    <span>মেডিকেল রিপোর্ট এনালাইজার</span>
+                </a>
 
-    <!-- Main Content Container -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                <a href="#diagnostics" onclick="switchMainTab('diagnostics')" id="nav-diagnostics" class="nav-item flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-notes-medical text-lg"></i>
+                    <span>স্মার্ট হেল্থ ডায়াগনস্টিকস</span>
+                </a>
 
-        <!-- Navigation Tabs -->
-        <div class="flex border-b border-slate-200 mb-6 overflow-x-auto">
-            <button id="tabReportBtn" onclick="switchTab('report')" class="py-3 px-6 text-base font-semibold border-b-2 border-medical-600 text-medical-600 flex items-center gap-2 transition-colors whitespace-nowrap">
-                <i class="fa-solid fa-file-medical"></i>
-                মেডিকেল রিপোর্ট বিশ্লেষণ
-            </button>
-            <button id="tabSymptomBtn" onclick="switchTab('symptom')" class="py-3 px-6 text-base font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 transition-colors whitespace-nowrap">
-                <i class="fa-solid fa-stethoscope"></i>
-                লক্ষণ পরীক্ষা (Symptom Checker)
-            </button>
-            <button id="tabTipsBtn" onclick="switchTab('tips')" class="py-3 px-6 text-base font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 transition-colors whitespace-nowrap">
-                <i class="fa-solid fa-heart-pulse"></i>
-                স্বাস্থ্য টিপস ও পরামর্শ
-            </button>
-        </div>
+                <a href="#consultation" onclick="switchMainTab('consultation')" id="nav-consultation" class="nav-item flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-user-doctor text-lg"></i>
+                    <span>AI কনসাল্টেশন ও ভয়েস চ্যাট</span>
+                </a>
 
-        <!-- Tab 1: Medical Report Analysis Content -->
-        <div id="reportTabSection" class="block space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Input Panel -->
-                <div class="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                            <i class="fa-solid fa-upload text-medical-600"></i>
-                            রিপোর্ট ইনপুট দিন
-                        </h2>
-                        <p class="text-xs text-slate-500 mt-1">Lab Report, X-Ray, ECG, MRI বা CT Scan এর সামারি বা তথ্য সিলেক্ট করুন।</p>
+                <a href="#vitals" onclick="switchMainTab('vitals')" id="nav-vitals" class="nav-item flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-chart-line text-lg"></i>
+                    <span>ভাইটালস ও ট্র্যাকার বোর্ড</span>
+                </a>
+
+                <a href="#cost" onclick="switchMainTab('cost')" id="nav-cost" class="nav-item flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-hand-holding-dollar text-lg"></i>
+                    <span>চিকিৎসা খরচ ও ল্যাব গাইড</span>
+                </a>
+            </nav>
+
+            <!-- User Profile Summary & System Health Status -->
+            <div class="p-4 border-t border-slate-800 bg-slate-950/60">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        AI Engine Online
+                    </span>
+                    <span class="font-number font-semibold text-cyan-400">v3.5 Pro</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-cyan-900/50 text-cyan-400 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-shield-halved"></i>
                     </div>
-
-                    <!-- Category Selector -->
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">রিপোর্টের ধরন বেছে নিন</label>
-                        <select id="reportCategory" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-xl focus:ring-medical-500 focus:border-medical-500 p-3">
-                            <option value="lab">🩸 ব্ল্যাড / ল্যাব রিপোর্ট (CBC, Diabetes, Lipid Profile)</option>
-                            <option value="xray">🦴 এক্স-রে রিপোর্ট (X-Ray Chest/Bone Summary)</option>
-                            <option value="ecg">🫀 ইসিজি রিপোর্ট (ECG Summary)</option>
-                            <option value="mri">🧠 এমআরআই রিপোর্ট (MRI Scan Finding)</option>
-                            <option value="ct">🔬 সিটি স্ক্যান রিপোর্ট (CT Scan Report)</option>
-                        </select>
+                    <div class="overflow-hidden">
+                        <p class="text-xs font-semibold text-white truncate">Enterprise Patient</p>
+                        <p class="text-[10px] text-slate-400 truncate">ID: #AI-90284-BD</p>
                     </div>
+                </div>
+            </div>
+        </aside>
 
-                    <!-- Sample Selector -->
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">অথবা নমুনা রিপোর্ট দিয়ে ট্রাই করুন:</label>
-                        <select id="sampleSelect" onchange="loadSampleData()" class="w-full bg-slate-100 border border-slate-200 text-slate-700 text-xs rounded-lg p-2.5">
-                            <option value="">-- ডেমো টেস্ট বেছে নিন --</option>
-                            <option value="cbc">নমুনা CBC (High WBC & Low Hemoglobin)</option>
-                            <option value="xray_pneumonia">নমুনা X-Ray (Chest Infiltration / Pneumonia Signs)</option>
-                            <option value="ecg_tachy">নমুনা ECG (Sinus Tachycardia)</option>
-                            <option value="mri_disc">নমুনা MRI (L4-L5 Disc Herniation)</option>
-                        </select>
-                    </div>
-
-                    <!-- Text Data Input -->
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">রিপোর্টের টেক্সট বা বিবরণ পেস্ট করুন</label>
-                        <textarea id="reportText" rows="6" placeholder="এখানে রিপোর্ট লেখার মূল বিষয় বা ডাক্তারের ফাইন্ডিং পেস্ট করুন... (যেমন: Hb 9.5 g/dL, WBC 14,000, Normal ECG sinus rhythm ইত্যাদি)" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-medical-500 focus:outline-none"></textarea>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button onclick="analyzeReport()" class="w-full bg-medical-600 hover:bg-medical-700 text-white font-semibold py-3 px-4 rounded-xl shadow flex items-center justify-center gap-2 transition-all">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i>
-                        <span>AI বিশ্লেষণ শুরু করুন</span>
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col h-screen overflow-hidden">
+            
+            <!-- Top Navigation Header -->
+            <header class="h-20 glass-panel sticky top-0 z-20 px-6 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="text-slate-500 hover:text-slate-800 dark:hover:text-white text-xl p-1.5 rounded-lg focus:outline-none">
+                        <i class="fa-solid fa-bars-staggered"></i>
                     </button>
+                    <div>
+                        <h1 id="pageTitle" class="text-xl font-bold text-slate-900 dark:text-white">মেডিকেল রিপোর্ট এনালাইজার</h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">উন্নত AI মডেল দ্বারা ল্যাব, এক্স-রে, ইসিজি, এমআরআই ও সিটি স্ক্যান ব্যাখ্যা</p>
+                    </div>
                 </div>
 
-                <!-- Result Panel -->
-                <div class="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <i class="fa-solid fa-microscope text-medical-600"></i>
-                                AI রিপোর্ট ফলাফল ও বিশ্লেষণ
+                <!-- Right Header Actions -->
+                <div class="flex items-center gap-3">
+                    <!-- Quick Health Score Indicator -->
+                    <div class="hidden sm:flex items-center gap-3 bg-slate-100 dark:bg-navy-800 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="text-right">
+                            <span class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">স্বাস্থ্য স্কোর</span>
+                            <span class="text-sm font-bold text-emerald-500 font-number">92 / 100</span>
+                        </div>
+                        <i class="fa-solid fa-heart-pulse text-emerald-500 text-lg"></i>
+                    </div>
+
+                    <!-- Dark Mode Toggle Button -->
+                    <button onclick="toggleTheme()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-navy-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-cyan-500 flex items-center justify-center transition-all">
+                        <i id="themeIcon" class="fa-solid fa-moon"></i>
+                    </button>
+
+                    <!-- Export Report Quick Button -->
+                    <button onclick="exportFullPDF()" class="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span class="hidden md:inline">রিপোর্ট ডাউনলোড</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Scrollable Dashboard Canvas -->
+            <main class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50 dark:bg-navy-950">
+
+                <!-- Business KPI Dashboard Banner -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="glass-panel p-4 rounded-2xl border border-slate-200 dark:border-slate-800/80 flex items-center justify-between shadow-sm">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">মোট বিশ্লেষণকৃত রিপোর্ট</p>
+                            <h3 class="text-2xl font-black text-slate-900 dark:text-white font-number mt-0.5">১,২৪৮+</h3>
+                            <span class="text-[10px] text-emerald-500 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> ৯৯.৪% নির্ভুলতা</span>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-microscope"></i>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded-2xl border border-slate-200 dark:border-slate-800/80 flex items-center justify-between shadow-sm">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">রোগ নির্ণয় ক্যাটাগরি</p>
+                            <h3 class="text-2xl font-black text-slate-900 dark:text-white font-number mt-0.5">৫টি প্রধান</h3>
+                            <span class="text-[10px] text-slate-400">Lab, X-Ray, ECG, MRI, CT</span>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded-2xl border border-slate-200 dark:border-slate-800/80 flex items-center justify-between shadow-sm">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">বর্তমান ঝুঁকি লেভেল</p>
+                            <h3 class="text-lg font-bold text-emerald-500 mt-1 flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> স্বাভাবিক (Normal)
+                            </h3>
+                            <span class="text-[10px] text-slate-400">সর্বশেষ টেস্ট অনুযায়ী</span>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-shield-heart"></i>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded-2xl border border-slate-200 dark:border-slate-800/80 flex items-center justify-between shadow-sm">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">AI মডেল রেসপন্স টাইম</p>
+                            <h3 class="text-2xl font-black text-slate-900 dark:text-white font-number mt-0.5">০.৪ সে.</h3>
+                            <span class="text-[10px] text-cyan-500 font-medium">Real-time Neural Parse</span>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 1: Medical Report Analyzer -->
+                <section id="section-analyzer" class="space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        
+                        <!-- Upload & Input Panel -->
+                        <div class="lg:col-span-5 space-y-5">
+                            <div class="glass-panel p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                                <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-cloud-arrow-up text-cyan-500"></i>
+                                    মেডিকেল ফাইল ও ডাটা ইনপুট
+                                </h2>
+
+                                <!-- Category Selection -->
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">টেস্ট বা রিপোর্টের ধরন নির্বাচন করুন</label>
+                                    <select id="reportCategory" class="w-full bg-slate-50 dark:bg-navy-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs rounded-xl p-3 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                                        <option value="lab">🩸 প্যাথলজি ও রক্তের ল্যাব রিপোর্ট (CBC, Diabetes, Lipid)</option>
+                                        <option value="xray">🦴 বুকের/হাড্ডির এক্স-রে রিপোর্ট (X-Ray Findings)</option>
+                                        <option value="ecg">🫀 ইসিজি ও হৃদরোগ রিপোর্ট (ECG Graph Summary)</option>
+                                        <option value="mri">🧠 এমআরআই স্ক্যান রিপোর্ট (MRI Scan Finding)</option>
+                                        <option value="ct">🔬 সিটি স্ক্যান রিপোর্ট (CT Scan Detail)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Drag & Drop File Upload Simulation Area -->
+                                <div id="dropZone" onclick="triggerFileInput()" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-cyan-500 dark:hover:border-cyan-400 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/50 dark:bg-navy-900/50 transition-all">
+                                    <input type="file" id="fileInput" class="hidden" accept="image/*,.pdf" onchange="handleFileSelect(event)">
+                                    <div class="w-12 h-12 bg-cyan-500/10 text-cyan-500 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">
+                                        <i class="fa-solid fa-file-arrow-up"></i>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-700 dark:text-slate-200">ফাইল আপলোড করতে এখানে ড্রাগ করুন অথবা ব্রাউজ করুন</p>
+                                    <p class="text-[10px] text-slate-400 mt-1">সমর্থিত ফরম্যাট: PDF, JPG, PNG (Max 25MB)</p>
+                                    <div id="filePreviewBadge" class="hidden mt-3 inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs px-3 py-1 rounded-lg">
+                                        <i class="fa-solid fa-circle-check"></i>
+                                        <span id="uploadedFileName">report.pdf</span>
+                                    </div>
+                                </div>
+
+                                <!-- Demo Sample Selector -->
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">অথবা ডেমো প্যাথলজি ডাটা দিয়ে টেস্ট করুন:</label>
+                                    <select id="sampleSelect" onchange="loadSampleData()" class="w-full bg-slate-100 dark:bg-navy-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded-xl p-2.5">
+                                        <option value="">-- ডেমো টেস্ট সিলেক্ট করুন --</option>
+                                        <option value="cbc">নমুনা CBC (Anemia & Infection)</option>
+                                        <option value="xray">নমুনা Chest X-Ray (Pneumonia Signs)</option>
+                                        <option value="ecg">নমুনা ECG (Sinus Tachycardia)</option>
+                                        <option value="mri">নমুনা Lumbar MRI (Disc Herniation)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Report Content Manual Text -->
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">রিপোর্টের টেক্সট বা ডাক্তারের রিমার্কস</label>
+                                    <textarea id="reportText" rows="5" placeholder="রিপোর্টের মূল ডাটা এখানে পেস্ট করুন..." class="w-full p-3 bg-slate-50 dark:bg-navy-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none"></textarea>
+                                </div>
+
+                                <!-- Execute Analysis Button -->
+                                <button onclick="runAIAnalysis()" class="w-full bg-gradient-to-r from-cyan-600 via-cyan-500 to-emerald-500 hover:from-cyan-700 hover:to-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-cyan-600/20 flex items-center justify-center gap-2 text-sm transition-all">
+                                    <i class="fa-solid fa-brain-circuit"></i>
+                                    <span>ইনটেলিজেন্ট এনালাইসিস চালু করুন</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Analysis Output & Findings Area -->
+                        <div class="lg:col-span-7">
+                            <div class="glass-panel p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm h-full flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
+                                        <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            <i class="fa-solid fa-clipboard-check text-emerald-500"></i>
+                                            বিশ্লেষণ ফলাফল ও ডায়াগনস্টিক রিপোর্ট
+                                        </h3>
+                                        <span id="riskBadge" class="hidden text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                                            ঝুঁকি: পরীক্ষা বাকি
+                                        </span>
+                                    </div>
+
+                                    <!-- Loading Spinner State -->
+                                    <div id="analysisLoader" class="hidden py-20 text-center space-y-4">
+                                        <div class="relative w-14 h-14 mx-auto">
+                                            <div class="w-14 h-14 rounded-full border-4 border-cyan-500/20 border-t-cyan-500 animate-spin"></div>
+                                            <i class="fa-solid fa-dna text-cyan-500 absolute inset-0 flex items-center justify-center text-lg"></i>
+                                        </div>
+                                        <p class="text-xs font-bold text-slate-600 dark:text-slate-300">AI নিউরাল নেটওয়ার্ক দ্বারা রিপোর্ট স্ক্যান ও ব্যাখ্যা করা হচ্ছে...</p>
+                                    </div>
+
+                                    <!-- Empty Placeholder State -->
+                                    <div id="analysisEmpty" class="text-center py-20 text-slate-400 space-y-3">
+                                        <i class="fa-solid fa-file-medical text-5xl text-slate-300 dark:text-slate-700"></i>
+                                        <p class="text-xs">বাম পাশের বক্সে আপনার রিপোর্ট ইনপুট দিয়ে 'ইনটেলিজেন্ট এনালাইসিস চালু করুন' বাটনে চাপ দিন।</p>
+                                    </div>
+
+                                    <!-- Results Layout Container -->
+                                    <div id="analysisResults" class="hidden space-y-4">
+                                        
+                                        <!-- Executive Summary Box -->
+                                        <div class="p-4 rounded-xl bg-slate-100/70 dark:bg-navy-900/70 border border-slate-200 dark:border-slate-800">
+                                            <h4 class="text-xs font-extrabold uppercase text-slate-500 dark:text-slate-400 mb-1 tracking-wider">সারসংক্ষেপ (Executive Summary)</h4>
+                                            <p id="resSummary" class="text-xs font-medium text-slate-800 dark:text-slate-200 leading-relaxed"></p>
+                                        </div>
+
+                                        <!-- Detected Value Comparison Table -->
+                                        <div>
+                                            <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
+                                                <i class="fa-solid fa-list-check text-cyan-500"></i>
+                                                চিহ্নিত প্যারামিটার ও নরমাল রেঞ্জ তুলনা
+                                            </h4>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-left border-collapse text-xs">
+                                                    <thead>
+                                                        <tr class="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400">
+                                                            <th class="py-2 px-3">প্যারামিটার</th>
+                                                            <th class="py-2 px-3">প্রাপ্ত মান</th>
+                                                            <th class="py-2 px-3">স্বাভাবিক মাত্রা (Normal)</th>
+                                                            <th class="py-2 px-3">স্ট্যাটাস</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="resParamTable" class="divide-y divide-slate-100 dark:divide-slate-800/60 font-number">
+                                                        <!-- JS Injected Rows -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <!-- Medical Explanation & Recommendations -->
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                                            <div class="p-3.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40">
+                                                <h5 class="text-xs font-bold text-cyan-800 dark:text-cyan-300 mb-1">সহজ ভাষায় ডাক্তারের ব্যাখ্যা</h5>
+                                                <p id="resExplanation" class="text-[11px] text-cyan-950 dark:text-cyan-200 leading-relaxed"></p>
+                                            </div>
+
+                                            <div class="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40">
+                                                <h5 class="text-xs font-bold text-emerald-800 dark:text-emerald-300 mb-1">পরবর্তী করণীয় ও পরামর্শ</h5>
+                                                <ul id="resActionSteps" class="list-disc list-inside text-[11px] text-emerald-950 dark:text-emerald-200 space-y-1"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="analysisFooter" class="hidden mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                                    <span><i class="fa-solid fa-lock"></i> 256-bit Encrypted Health Processing</span>
+                                    <span>AI Assistant Decision Support System</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- SECTION 2: Smart Diagnostics Suite -->
+                <section id="section-diagnostics" class="hidden space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-stethoscope text-emerald-500"></i>
+                                স্মার্ট লক্ষণ পরীক্ষা ও ট্রায়াজ সিস্টেম (Symptom Triage Engine)
                             </h2>
-                            <span id="analysisBadge" class="hidden text-xs font-semibold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">বিশ্লেষণ সম্পন্ন</span>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">শরীরের কোন অঙ্গ বা সিস্টেমে সমস্যা অনুভব করছেন তা নির্বাচন করে তীব্রতা পরীক্ষা করুন।</p>
                         </div>
 
-                        <!-- Loading State -->
-                        <div id="reportLoader" class="hidden py-16 text-center space-y-3">
-                            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-medical-600 border-t-transparent"></div>
-                            <p class="text-sm font-medium text-slate-600">AI আপনার মেডিকেল রিপোর্ট পর্যালোচনা করছে...</p>
+                        <!-- Interactive Organ/System Selector -->
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                            <button onclick="selectBodySystem('head')" id="sys-head" class="sys-btn border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-center hover:border-cyan-500 transition-all bg-slate-50/50 dark:bg-navy-900">
+                                <i class="fa-solid fa-brain text-cyan-500 text-xl block mb-1"></i>
+                                <span class="text-xs font-semibold">মাথা ও স্নায়ু</span>
+                            </button>
+
+                            <button onclick="selectBodySystem('chest')" id="sys-chest" class="sys-btn border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-center hover:border-cyan-500 transition-all bg-slate-50/50 dark:bg-navy-900">
+                                <i class="fa-solid fa-heart-pulse text-rose-500 text-xl block mb-1"></i>
+                                <span class="text-xs font-semibold">বুক ও হৃদপিণ্ড</span>
+                            </button>
+
+                            <button onclick="selectBodySystem('stomach')" id="sys-stomach" class="sys-btn border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-center hover:border-cyan-500 transition-all bg-slate-50/50 dark:bg-navy-900">
+                                <i class="fa-solid fa-pills text-amber-500 text-xl block mb-1"></i>
+                                <span class="text-xs font-semibold">পেট ও হজম</span>
+                            </button>
+
+                            <button onclick="selectBodySystem('ortho')" id="sys-ortho" class="sys-btn border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-center hover:border-cyan-500 transition-all bg-slate-50/50 dark:bg-navy-900">
+                                <i class="fa-solid fa-bone text-purple-500 text-xl block mb-1"></i>
+                                <span class="text-xs font-semibold">হাড় ও জয়েন্ট</span>
+                            </button>
+
+                            <button onclick="selectBodySystem('fever')" id="sys-fever" class="sys-btn border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-center hover:border-cyan-500 transition-all bg-slate-50/50 dark:bg-navy-900">
+                                <i class="fa-solid fa-temperature-high text-orange-500 text-xl block mb-1"></i>
+                                <span class="text-xs font-semibold">জ্বর ও ঠান্ডা</span>
+                            </button>
+
+                            <button onclick="selectBodySystem('skin')" id="sys-skin" class="sys-btn border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-center hover:border-cyan-500 transition-all bg-slate-50/50 dark:bg-navy-900">
+                                <i class="fa-solid fa-allergies text-emerald-500 text-xl block mb-1"></i>
+                                <span class="text-xs font-semibold">ত্বক ও এলার্জি</span>
+                            </button>
                         </div>
 
-                        <!-- Initial Empty State -->
-                        <div id="reportEmptyState" class="text-center py-16 text-slate-400 space-y-3">
-                            <i class="fa-solid fa-file-invoice text-5xl text-slate-300"></i>
-                            <p class="text-sm">বাম পাশে আপনার রিপোর্টের তথ্য দিয়ে 'AI বিশ্লেষণ শুরু করুন' এ ক্লিক করুন।</p>
-                        </div>
-
-                        <!-- Analysis Result Box -->
-                        <div id="reportResultContent" class="hidden space-y-4">
-                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <h3 class="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1">রিপোর্টের মূল সারসংক্ষেপ (Summary)</h3>
-                                <p id="resSummary" class="text-slate-800 font-semibold text-sm leading-relaxed"></p>
+                        <!-- Symptom Severity Scale Input -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">সমস্যার তীব্রতা স্কেল (Severity Index): <span id="severityVal" class="font-number font-bold text-cyan-500">5 / 10</span></label>
+                                <input type="range" min="1" max="10" value="5" id="severityRange" oninput="document.getElementById('severityVal').innerText = this.value + ' / 10'" class="w-full accent-cyan-500">
+                                <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                    <span>হালকা অস্বস্তি</span>
+                                    <span>সহনীয় ব্যথা</span>
+                                    <span class="text-rose-500 font-bold">তীব্র/জরুরি</span>
+                                </div>
                             </div>
 
-                            <div class="bg-amber-50/60 border border-amber-200 p-4 rounded-xl">
-                                <h3 class="text-xs uppercase tracking-wider font-bold text-amber-800 mb-1">মূল পরিলক্ষিত বিষয়সমূহ (Findings)</h3>
-                                <ul id="resFindings" class="list-disc list-inside text-sm text-amber-900 space-y-1"></ul>
-                            </div>
-
-                            <div class="bg-blue-50/60 border border-blue-200 p-4 rounded-xl">
-                                <h3 class="text-xs uppercase tracking-wider font-bold text-blue-800 mb-1">সহজ ব্যাখ্যাকরণ (Explanation)</h3>
-                                <p id="resExplanation" class="text-slate-700 text-sm leading-relaxed"></p>
-                            </div>
-
-                            <div class="bg-emerald-50/60 border border-emerald-200 p-4 rounded-xl">
-                                <h3 class="text-xs uppercase tracking-wider font-bold text-emerald-800 mb-1">পরবর্তী পদক্ষেপ ও লাইফস্টাইল পরামর্শ</h3>
-                                <ul id="resRecommendations" class="list-disc list-inside text-sm text-emerald-900 space-y-1"></ul>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">অতিরিক্ত লক্ষণসমূহ (বিস্তারিত লিখুন)</label>
+                                <input type="text" id="symptomText" placeholder="যেমন: ৩ দিন ধরে সন্ধ্যালগ্নে জ্বর আসছে, সাথে মাথা ঝিমঝিম করা..." class="w-full p-2.5 bg-slate-50 dark:bg-navy-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none">
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Footer Warning -->
-                    <div id="reportResultFooter" class="hidden mt-6 pt-3 border-t border-slate-100 text-xs text-slate-500">
-                        * এটি স্বয়ংক্রিয় আর্টিফিশিয়াল ইন্টেলিজেন্স দ্বারা তৈরি বিশ্লেষণ। শারীরিক সমস্যা থাকলে সরাসরি আপনার সংশ্লিষ্ট চিকিৎসকের সাথে পরামর্শ করুন।
+                        <button onclick="runSymptomTriage()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-xl text-xs flex items-center gap-2 shadow-md shadow-emerald-600/20">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i>
+                            <span>ডায়াগনস্টিক ট্রায়াজ মূল্যায়ণ করুন</span>
+                        </button>
+
+                        <!-- Triage Result Card -->
+                        <div id="triageResultBox" class="hidden p-5 rounded-2xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-xs font-extrabold uppercase text-slate-600 dark:text-slate-300 tracking-wider">AI ডায়াগনস্টিক অ্যাসেসমেন্ট</h3>
+                                <span id="triageLevel" class="text-xs font-bold px-3 py-0.5 rounded-full"></span>
+                            </div>
+                            <div id="triageContent" class="text-xs text-slate-700 dark:text-slate-200 leading-relaxed"></div>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </section>
+
+                <!-- SECTION 3: AI Consultation & Voice Assistant -->
+                <section id="section-consultation" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[580px]">
+                        
+                        <!-- Chat Box Container -->
+                        <div class="lg:col-span-8 glass-panel rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+                            <!-- Chat Header -->
+                            <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-navy-900/50">
+                                <div class="flex items-center gap-3">
+                                    <div class="relative">
+                                        <div class="w-10 h-10 rounded-xl bg-cyan-600 text-white flex items-center justify-center font-bold">
+                                            <i class="fa-solid fa-user-doctor"></i>
+                                        </div>
+                                        <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-navy-950 rounded-full"></span>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">AI মেডিক্যাল কনসালট্যান্ট</h3>
+                                        <p class="text-[10px] text-slate-400">বহুভাষিক স্বাস্থ্যে উত্তর দিতে প্রস্তুত (বাংলা ও ইংরেজি)</p>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-semibold text-cyan-500 bg-cyan-500/10 px-2.5 py-1 rounded-lg">Live Tele-AI</span>
+                            </div>
+
+                            <!-- Chat Messages Window -->
+                            <div id="chatMessages" class="flex-1 p-4 overflow-y-auto space-y-3">
+                                <div class="flex items-start gap-2.5">
+                                    <div class="w-7 h-7 rounded-lg bg-cyan-600 text-white flex items-center justify-center text-xs flex-shrink-0">AI</div>
+                                    <div class="bg-slate-200 dark:bg-navy-800 text-slate-800 dark:text-slate-100 p-3 rounded-2xl rounded-tl-none text-xs max-w-[80%] leading-relaxed">
+                                        হ্যালো! আমি আপনার AI স্বাস্থ্য সহকারী। আপনার সাম্প্রতিক কোনো রিপোর্ট ব্যাখ্যা প্রয়োজন কিংবা শারীরিক অসুবিধা বিষয়ে প্রশ্ন করতে পারেন।
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Audio Waveform Visualizer (Simulated Voice Processing) -->
+                            <div id="voiceWaveform" class="hidden px-4 py-2 bg-slate-900 border-t border-slate-800 flex items-center justify-center gap-1.5">
+                                <span class="text-[10px] text-cyan-400 font-bold mr-2">ভয়েস ইনপুট নেওয়া হচ্ছে:</span>
+                                <div class="w-1 bg-cyan-400 rounded-full waveform-bar" style="animation-delay: 0.1s"></div>
+                                <div class="w-1 bg-cyan-400 rounded-full waveform-bar" style="animation-delay: 0.3s"></div>
+                                <div class="w-1 bg-cyan-400 rounded-full waveform-bar" style="animation-delay: 0.2s"></div>
+                                <div class="w-1 bg-cyan-400 rounded-full waveform-bar" style="animation-delay: 0.4s"></div>
+                                <div class="w-1 bg-cyan-400 rounded-full waveform-bar" style="animation-delay: 0.1s"></div>
+                            </div>
+
+                            <!-- Chat Input Bar -->
+                            <div class="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
+                                <button onclick="toggleVoiceSim()" id="voiceBtn" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-300 hover:text-cyan-500 flex items-center justify-center transition-all">
+                                    <i class="fa-solid fa-microphone"></i>
+                                </button>
+                                <input type="text" id="chatInput" placeholder="এখানে আপনার স্বাস্থ্য বিষয়ক প্রশ্ন লিখুন..." onkeypress="if(event.key==='Enter') sendChatMessage()" class="flex-1 p-2.5 bg-slate-50 dark:bg-navy-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                                <button onclick="sendChatMessage()" class="bg-cyan-600 hover:bg-cyan-700 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-md shadow-cyan-600/20">
+                                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Side Quick Prompts Card -->
+                        <div class="lg:col-span-4 space-y-4">
+                            <div class="glass-panel p-5 rounded-2xl border border-slate-200 dark:border-slate-800 h-full">
+                                <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3">দ্রুত জিজ্ঞাসাসমূহ (Quick Prompts)</h3>
+                                <div class="space-y-2">
+                                    <button onclick="sendQuickPrompt('হাই বিপি কমানোর ঘরোয়া উপায় কী?')" class="w-full text-left p-2.5 rounded-xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 hover:border-cyan-500 transition-all">
+                                        💡 "হাই বিপি কমানোর ঘরোয়া উপায় কী?"
+                                    </button>
+                                    <button onclick="sendQuickPrompt('CBC রিপোর্টে WBC বেশি থাকলে কী নির্দেশ করে?')" class="w-full text-left p-2.5 rounded-xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 hover:border-cyan-500 transition-all">
+                                        🩸 "CBC রিপোর্টে WBC বেশি থাকলে কী হয়?"
+                                    </button>
+                                    <button onclick="sendQuickPrompt('প্রতিদিন কত লিটার পানি পান করা উচিত?')" class="w-full text-left p-2.5 rounded-xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 hover:border-cyan-500 transition-all">
+                                        💧 "প্রতিদিন কত লিটার পানি পান করা উচিত?"
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- SECTION 4: Vitals Dashboard -->
+                <section id="section-vitals" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        
+                        <!-- Vitals Calculator Card -->
+                        <div class="glass-panel p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-calculator text-cyan-500"></i>
+                                বিএমআই (BMI) ক্যালকুলেটর
+                            </h3>
+
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">ওজন (Weight in KG)</label>
+                                    <input type="number" id="bmiWeight" value="70" class="w-full p-2.5 bg-slate-50 dark:bg-navy-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-number">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">উচ্চতা (Height in CM)</label>
+                                    <input type="number" id="bmiHeight" value="170" class="w-full p-2.5 bg-slate-50 dark:bg-navy-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-number">
+                                </div>
+                                <button onclick="calculateBMI()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all">
+                                    হিসাব করুন
+                                </button>
+                            </div>
+
+                            <div id="bmiResult" class="p-3 bg-slate-100 dark:bg-navy-900 rounded-xl text-center">
+                                <span class="text-[10px] text-slate-400 block uppercase">আপনার বর্তমান বিএমআই</span>
+                                <span id="bmiValue" class="text-2xl font-black text-cyan-500 font-number">24.2</span>
+                                <span id="bmiStatus" class="block text-xs font-bold text-emerald-500 mt-0.5">স্বাভাবিক ওজন (Normal)</span>
+                            </div>
+                        </div>
+
+                        <!-- Vitals Charts Display -->
+                        <div class="md:col-span-2 glass-panel p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-emerald-500"></i>
+                                ব্লাড প্রেশার ও প্লাস রেট ট্র্যাকিং ট্রেন্ড
+                            </h3>
+                            <div class="h-64">
+                                <canvas id="vitalsChart"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- SECTION 5: Treatment Cost Estimator -->
+                <section id="section-cost" class="hidden space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-6">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-hand-holding-dollar text-emerald-500"></i>
+                                চিকিৎসা খরচ ও ল্যাব গাইড (Cost Estimator)
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">বাংলাদেশের সরকারি ও বেসরকারি ডায়াগনস্টিক সেন্টারের সাধারণ টেস্টের আনুমানিক খরচ তুলনা করুন।</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="p-4 rounded-2xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
+                                <span class="text-xs font-bold text-slate-500">CBC (কমপ্লিট ব্লাড কাউন্ট)</span>
+                                <div class="mt-2 text-xs space-y-1">
+                                    <p>সরকারি হাসপাতাল: <span class="font-number font-bold text-emerald-500">৳১৫০ - ৳২০০</span></p>
+                                    <p>প্রাইভেট ল্যাব: <span class="font-number font-bold text-cyan-500">৳৪০০ - ৳৭০০</span></p>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-2xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
+                                <span class="text-xs font-bold text-slate-500">Chest X-Ray (চেস্ট এক্স-রে)</span>
+                                <div class="mt-2 text-xs space-y-1">
+                                    <p>সরকারি হাসপাতাল: <span class="font-number font-bold text-emerald-500">৳২০০ - ৳৩০০</span></p>
+                                    <p>প্রাইভেট ল্যাব: <span class="font-number font-bold text-cyan-500">৳৬০০ - ৳১,০০০</span></p>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-2xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
+                                <span class="text-xs font-bold text-slate-500">Brain / Lumbar MRI Scan</span>
+                                <div class="mt-2 text-xs space-y-1">
+                                    <p>সরকারি হাসপাতাল: <span class="font-number font-bold text-emerald-500">৳৩,০০০ - ৳৪,০০০</span></p>
+                                    <p>প্রাইভেট ল্যাব: <span class="font-number font-bold text-cyan-500">৳৭,০০০ - ৳১২,০০০</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
         </div>
 
-        <!-- Tab 2: Symptom Checker Content -->
-        <div id="symptomTabSection" class="hidden space-y-6">
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-4xl mx-auto space-y-6">
-                <div>
-                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-notes-medical text-medical-600"></i>
-                        স্মার্ট লক্ষণ পরীক্ষা (Symptom Checker)
-                    </h2>
-                    <p class="text-sm text-slate-500 mt-1">আপনার কী কী শারীরিক অসুবিধা হচ্ছে তা বেছে নিন অথবা সংক্ষেপে নিচে লিখুন।</p>
-                </div>
-
-                <!-- Quick Checkboxes -->
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">সাধারণ লক্ষণসমূহ নির্বাচন করুন:</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        <label class="flex items-center gap-2 p-2.5 bg-slate-50 border rounded-lg hover:bg-slate-100 cursor-pointer text-sm">
-                            <input type="checkbox" value="জ্বর" class="symptom-check rounded text-medical-600 focus:ring-medical-500"> জ্বর
-                        </label>
-                        <label class="flex items-center gap-2 p-2.5 bg-slate-50 border rounded-lg hover:bg-slate-100 cursor-pointer text-sm">
-                            <input type="checkbox" value="কাশি" class="symptom-check rounded text-medical-600 focus:ring-medical-500"> শুকনো/ভেজা কাশি
-                        </label>
-                        <label class="flex items-center gap-2 p-2.5 bg-slate-50 border rounded-lg hover:bg-slate-100 cursor-pointer text-sm">
-                            <input type="checkbox" value="মাথাব্যথা" class="symptom-check rounded text-medical-600 focus:ring-medical-500"> তীব্র মাথাব্যথা
-                        </label>
-                        <label class="flex items-center gap-2 p-2.5 bg-slate-50 border rounded-lg hover:bg-slate-100 cursor-pointer text-sm">
-                            <input type="checkbox" value="গলা ব্যথা" class="symptom-check rounded text-medical-600 focus:ring-medical-500"> গলা ব্যথা
-                        </label>
-                        <label class="flex items-center gap-2 p-2.5 bg-slate-50 border rounded-lg hover:bg-slate-100 cursor-pointer text-sm">
-                            <input type="checkbox" value="বুক ব্যথা" class="symptom-check rounded text-medical-600 focus:ring-medical-500"> বুক ধরাফড়/ব্যথা
-                        </label>
-                        <label class="flex items-center gap-2 p-2.5 bg-slate-50 border rounded-lg hover:bg-slate-100 cursor-pointer text-sm">
-                            <input type="checkbox" value="পেটে ব্যথা" class="symptom-check rounded text-medical-600 focus:ring-medical-500"> পেট ব্যথা বা বদহজম
-                        </label>
-                        <label class="flex items-center gap-2 p-2.5 bg-slate-50 border rounded-lg hover:bg-slate-100 cursor-pointer text-sm">
-                            <input type="checkbox" value="ক্লান্তি" class="symptom-check rounded text-medical-600 focus:ring-medical-500"> প্রচণ্ড ক্লান্তি
-                        </label>
-                        <label class="flex items-center gap-2 p-2.5 bg-slate-50 border rounded-lg hover:bg-slate-100 cursor-pointer text-sm">
-                            <input type="checkbox" value="শ্বাসকষ্ট" class="symptom-check rounded text-medical-600 focus:ring-medical-500"> শ্বাসকষ্ট
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Detail Symptom Input -->
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">অন্যান্য কোনো বিশেষ লক্ষণ বা বিস্তারিত বিবরণ (ঐচ্ছিক):</label>
-                    <textarea id="symptomDetails" rows="3" placeholder="কতদিন ধরে সমস্যা? অতিরিক্ত কোনো অসুবিধা হচ্ছে কিনা লিখুন..." class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-medical-500 focus:outline-none"></textarea>
-                </div>
-
-                <button onclick="checkSymptoms()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow flex items-center justify-center gap-2 transition-all">
-                    <i class="fa-solid fa-magnifying-glass-pulse"></i>
-                    <span>লক্ষণ মূল্যায়ন করুন</span>
-                </button>
-
-                <!-- Symptom Check Result -->
-                <div id="symptomResult" class="hidden p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                    <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-clipboard-check text-emerald-600"></i>
-                        AI হেল্থ অ্যাসেসমেন্ট
-                    </h3>
-                    <div id="symptomOutput" class="text-sm text-slate-700 space-y-2 leading-relaxed"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab 3: Health Tips Content -->
-        <div id="tipsTabSection" class="hidden space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Card 1 -->
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl mb-4">
-                        <i class="fa-solid fa-droplet"></i>
-                    </div>
-                    <h3 class="font-bold text-slate-900 text-lg mb-2">প্রতিদিন পর্যাপ্ত পানি পান</h3>
-                    <p class="text-sm text-slate-600 leading-relaxed">একজন প্রাপ্তবয়স্ক মানুষের প্রতিদিন অন্তত ২.৫ থেকে ৩ লিটার পানি পান করা উচিত। এটি রক্ত সঞ্চালন ও কিডনি সুস্থ রাখতে অত্যন্ত সাহায্য করে।</p>
-                </div>
-
-                <!-- Card 2 -->
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-xl mb-4">
-                        <i class="fa-solid fa-bed"></i>
-                    </div>
-                    <h3 class="font-bold text-slate-900 text-lg mb-2">নিয়মিত পর্যাপ্ত ঘুম</h3>
-                    <p class="text-sm text-slate-600 leading-relaxed">দৈনিক ৭-৮ ঘণ্টা সুনিদ্রা আমাদের শরীরের ইমিউন সিস্টেম বা রোগ প্রতিরোধ ক্ষমতা বহুগুণ বাড়ায় এবং মানসিক ক্লান্তি দূর করে।</p>
-                </div>
-
-                <!-- Card 3 -->
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center text-xl mb-4">
-                        <i class="fa-solid fa-heart-circle-check"></i>
-                    </div>
-                    <h3 class="font-bold text-slate-900 text-lg mb-2">নিয়মিত হাঁটা ও ব্যায়াম</h3>
-                    <p class="text-sm text-slate-600 leading-relaxed">প্রতিদিন কমপক্ষে ৩০ মিনিট হাঁটা বা হালকা শারীরিক কসরত হৃদরোগ, হাই ব্লাড প্রেশার এবং ডায়াবেটিসের ঝুঁকি উল্লেখযোগ্যভাবে কমায়।</p>
-                </div>
-            </div>
-
-            <!-- Interactive Daily Health Advisor -->
-            <div class="bg-gradient-to-r from-medical-700 to-medical-800 text-white p-6 rounded-2xl shadow-md space-y-4">
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                    <i class="fa-solid fa-lightbulb text-amber-300"></i>
-                    দৈনন্দিন হেল্থ টিপস জেনারেটর
-                </h3>
-                <p class="text-sm text-medical-100">আপনার আজকের বয়সবর্গ অনুযায়ী একটি বিশেষ স্বাস্থ্য পরামর্শ পেতে নিচের বাটনে ক্লিক করুন।</p>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="generateTip('তরুণ (18-35)')" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm transition-all border border-white/20">১৮ - ৩৫ বছর</button>
-                    <button onclick="generateTip('মধ্যবয়সী (36-50)')" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm transition-all border border-white/20">৩৬ - ৫০ বছর</button>
-                    <button onclick="generateTip('প্রবীণ (50+)')" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm transition-all border border-white/20">৫০+ বছর</button>
-                </div>
-                <div id="tipBox" class="hidden mt-4 p-4 bg-white/10 border border-white/20 rounded-xl text-sm leading-relaxed"></div>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Modal: Free Setup Guide -->
-    <div id="freeGuideModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-5">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i>
-                    সম্পূর্ণ ফ্রিতে অ্যাপটি অনলাইনে চালু করার নিয়ম
-                </h3>
-                <button onclick="toggleModal('freeGuideModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-
-            <div class="space-y-4 text-sm text-slate-700">
-                <p>আপনি এই ওয়েবসাইটটির সম্পূর্ণ কোড ফ্রিতে হোস্টিং করে যেকোনো লাইভ ডোমেইনে অন করার জন্য নিচের যেকোনো একটি ফ্রি প্ল্যাটফর্ম ব্যবহার করতে পারেন:</p>
-
-                <!-- Method 1: Netlify -->
-                <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-2">
-                    <h4 class="font-bold text-slate-900 flex items-center gap-2">
-                        <span class="w-6 h-6 bg-emerald-600 text-white rounded-full inline-flex items-center justify-center text-xs">১</span>
-                        Netlify দিয়ে (সবচেয়ে সহজ - ১ মিনিট):
-                    </h4>
-                    <ol class="list-decimal list-inside space-y-1 text-xs text-slate-600 pl-2">
-                        <li>এই কোডটি আপনার কম্পিউটারে <code>index.html</code> নামে সেভ করুন।</li>
-                        <li><a href="https://www.netlify.com" target="_blank" class="text-medical-600 underline font-semibold">Netlify.com</a> এ একটি ফ্রি একাউন্ট খুলুন।</li>
-                        <li>Dashboard এ গিয়ে <strong>"Sites"</strong> ট্যাবে যান এবং <code>index.html</code> ফাইলটি Drag and Drop (টেনে এনে ছেড়ে দিন) করুন।</li>
-                        <li>১০ সেকেন্ডের মধ্যে আপনি একটি ফ্রি লাইভ লিঙ্ক পেয়ে যাবেন!</li>
-                    </ol>
-                </div>
-
-                <!-- Method 2: GitHub Pages -->
-                <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-2">
-                    <h4 class="font-bold text-slate-900 flex items-center gap-2">
-                        <span class="w-6 h-6 bg-emerald-600 text-white rounded-full inline-flex items-center justify-center text-xs">২</span>
-                        GitHub Pages দিয়ে:
-                    </h4>
-                    <ol class="list-decimal list-inside space-y-1 text-xs text-slate-600 pl-2">
-                        <li>GitHub.com এ একাউন্ট তৈরি করে একটি নতুন Repository খুলুন।</li>
-                        <li>এই ফাইলটি <code>index.html</code> নাম দিয়ে আপলোড করুন।</li>
-                        <li>Repository-র <strong>Settings -> Pages</strong> এ যান এবং Source অপশনে 'main branch' সিলেক্ট করে Save দিন।</li>
-                    </ol>
-                </div>
-
-                <!-- Method 3: Vercel -->
-                <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-2">
-                    <h4 class="font-bold text-slate-900 flex items-center gap-2">
-                        <span class="w-6 h-6 bg-emerald-600 text-white rounded-full inline-flex items-center justify-center text-xs">৩</span>
-                        Vercel দিয়ে:
-                    </h4>
-                    <p class="text-xs text-slate-600">Vercel.com এ গিয়ে নতুন Project ক্রিয়েট করে আপনার ফাইলটি ইমপোর্ট বা পেস্ট করে দিলেই কয়েক সেকেন্ডে ফ্রিতে পাবলিশ হয়ে যাবে।</p>
-                </div>
-            </div>
-
-            <div class="pt-3 border-t text-right">
-                <button onclick="toggleModal('freeGuideModal')" class="bg-slate-800 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-slate-900">
-                    বুঝেছি, বন্ধ করুন
-                </button>
-            </div>
-        </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
-        <div class="max-w-7xl mx-auto px-4">
-            <p class="font-semibold text-slate-700">AI DOCTOR - হেল্থ কেয়ার প্ল্যাটফর্ম</p>
-            <p class="mt-1">সকল রিপোর্ট বিশ্লেষণ কৃত্রিম বুদ্ধিমত্তা দ্বারা সিমুলেটেড। যেকোনো জরুরি প্রয়োজনে হাসপাতালে যোগাযোগ করুন।</p>
-        </div>
-    </footer>
-
-    <!-- Application JavaScript Logic -->
     <script>
-        // Tab Switcher Logic
-        function switchTab(tabName) {
-            const reportSec = document.getElementById('reportTabSection');
-            const symptomSec = document.getElementById('symptomTabSection');
-            const tipsSec = document.getElementById('tipsTabSection');
+        // Active Main Tab Switcher
+        function switchMainTab(tabKey) {
+            const sections = ['analyzer', 'diagnostics', 'consultation', 'vitals', 'cost'];
+            const titles = {
+                'analyzer': 'মেডিকেল রিপোর্ট এনালাইজার',
+                'diagnostics': 'স্মার্ট হেল্থ ডায়াগনস্টিকস',
+                'consultation': 'AI কনসাল্টেশন ও ভয়েস চ্যাট',
+                'vitals': 'ভাইটালস ও ট্র্যাকার বোর্ড',
+                'cost': 'চিকিৎসা খরচ ও ল্যাব গাইড'
+            };
 
-            const tabReportBtn = document.getElementById('tabReportBtn');
-            const tabSymptomBtn = document.getElementById('tabSymptomBtn');
-            const tabTipsBtn = document.getElementById('tabTipsBtn');
-
-            // Hide all
-            reportSec.classList.add('hidden');
-            symptomSec.classList.add('hidden');
-            tipsSec.classList.add('hidden');
-
-            // Reset Tab Styles
-            const activeStyle = ['border-medical-600', 'text-medical-600'];
-            const inactiveStyle = ['border-transparent', 'text-slate-500'];
-
-            [tabReportBtn, tabSymptomBtn, tabTipsBtn].forEach(btn => {
-                btn.classList.remove(...activeStyle);
-                btn.classList.add(...inactiveStyle);
+            sections.forEach(s => {
+                document.getElementById('section-' + s).classList.add('hidden');
+                const nav = document.getElementById('nav-' + s);
+                if(nav) {
+                    nav.classList.remove('bg-gradient-to-r', 'from-cyan-600', 'to-cyan-700', 'text-white', 'shadow-md');
+                    nav.classList.add('text-slate-300');
+                }
             });
 
-            // Show Selected Tab
-            if(tabName === 'report') {
-                reportSec.classList.remove('hidden');
-                tabReportBtn.classList.add(...activeStyle);
-                tabReportBtn.classList.remove(...inactiveStyle);
-            } else if(tabName === 'symptom') {
-                symptomSec.classList.remove('hidden');
-                tabSymptomBtn.classList.add(...activeStyle);
-                tabSymptomBtn.classList.remove(...inactiveStyle);
-            } else if(tabName === 'tips') {
-                tipsSec.classList.remove('hidden');
-                tabTipsBtn.classList.add(...activeStyle);
-                tabTipsBtn.classList.remove(...inactiveStyle);
+            document.getElementById('section-' + tabKey).classList.remove('hidden');
+            const activeNav = document.getElementById('nav-' + tabKey);
+            if(activeNav) {
+                activeNav.classList.add('bg-gradient-to-r', 'from-cyan-600', 'to-cyan-700', 'text-white', 'shadow-md');
+                activeNav.classList.remove('text-slate-300');
+            }
+
+            document.getElementById('pageTitle').innerText = titles[tabKey];
+        }
+
+        // Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-ml-64');
+        }
+
+        // Theme Toggle (Light/Dark)
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if(html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.className = 'fa-solid fa-moon';
+            } else {
+                html.classList.add('dark');
+                icon.className = 'fa-solid fa-sun text-amber-400';
             }
         }
 
-        // Modal Toggle Logic
-        function toggleModal(modalId) {
-            const modal = document.getElementById(modalId);
-            modal.classList.toggle('hidden');
+        // File Selection Logic
+        function triggerFileInput() {
+            document.getElementById('fileInput').click();
         }
 
-        // Demo Sample Data Auto-fill
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if(file) {
+                document.getElementById('uploadedFileName').innerText = file.name;
+                document.getElementById('filePreviewBadge').classList.remove('hidden');
+            }
+        }
+
+        // Demo Sample Auto-loader
         function loadSampleData() {
             const sample = document.getElementById('sampleSelect').value;
-            const textArea = document.getElementById('reportText');
-            const category = document.getElementById('reportCategory');
+            const reportCat = document.getElementById('reportCategory');
+            const area = document.getElementById('reportText');
 
             if(sample === 'cbc') {
-                category.value = 'lab';
-                textArea.value = "CBC REPORT:\nHemoglobin: 9.2 g/dL (Normal: 12-16)\nWBC Count: 14,500 /uL (Normal: 4000-11000)\nPlatelets: 250,000 /uL\nRBC: 3.8 million/uL";
-            } else if(sample === 'xray_pneumonia') {
-                category.value = 'xray';
-                textArea.value = "CHEST X-RAY PA VIEW:\nOpacities and patchy consolidations observed in the lower right lung lobe. Trachea central. Cardiac shadow normal in size. Impression: Patchy infiltration suggesting bacterial pneumonia.";
-            } else if(sample === 'ecg_tachy') {
-                category.value = 'ecg';
-                textArea.value = "ECG REPORT:\nHeart Rate: 118 bpm\nRhythm: Regular Sinus Rhythm\nP wave, QRS complex normal duration.\nImpression: Sinus Tachycardia. No acute ST-T elevated changes.";
-            } else if(sample === 'mri_disc') {
-                category.value = 'mri';
-                textArea.value = "LUMBAR SPINE MRI:\nL4-L5 posterior disc protrusion noted compressing the nerve root. L5-S1 disc degeneration with mild canal stenosis. Impression: Lumbar Disc Herniation.";
+                reportCat.value = 'lab';
+                area.value = "CBC PATHOLOGY REPORT:\nHemoglobin: 9.4 g/dL (Normal: 12-16)\nWBC Count: 14,800 /uL (Normal: 4000-11000)\nPlatelet Count: 210,000 /uL (Normal: 150000-450000)\nESR: 35 mm/1st hr";
+            } else if(sample === 'xray') {
+                reportCat.value = 'xray';
+                area.value = "CHEST X-RAY PA VIEW:\nOpacities noted in lower right lung field suggesting consolidations. Trachea is central. Cardiac shadow size normal.\nImpression: Acute lobar pneumonia signs.";
+            } else if(sample === 'ecg') {
+                reportCat.value = 'ecg';
+                area.value = "ELECTROCARDIOGRAM (ECG):\nHeart Rate: 115 bpm\nRhythm: Regular Sinus Rhythm\nST Segment: Normal\nImpression: Sinus Tachycardia.";
+            } else if(sample === 'mri') {
+                reportCat.value = 'mri';
+                area.value = "LUMBAR MRI SCAN:\nPosterior disc protrusion at L4-L5 pressing on the nerve root. L5-S1 disc degeneration.\nImpression: Lumbar Disc Herniation with Radiculopathy.";
             }
         }
 
-        // AI Medical Report Breakdown Engine (Simulation)
-        function analyzeReport() {
+        function runAIAnalysis() {
             const text = document.getElementById('reportText').value.trim();
-            const category = document.getElementById('reportCategory').value;
-
-            const loader = document.getElementById('reportLoader');
-            const emptyState = document.getElementById('reportEmptyState');
-            const resultContent = document.getElementById('reportResultContent');
-            const badge = document.getElementById('analysisBadge');
-            const footer = document.getElementById('reportResultFooter');
-
             if(!text) {
-                alert('অনুগ্রহ করে আপনার মেডিকেল রিপোর্টের তথ্য প্রদান করুন!');
+                alert('অনুগ্রহ করে রিপোর্ট ডাটা ইনপুট বা নমুনা নির্বাচন করুন!');
                 return;
             }
 
-            // Show Loader
-            emptyState.classList.add('hidden');
-            resultContent.classList.add('hidden');
-            badge.classList.add('hidden');
-            footer.classList.add('hidden');
-            loader.classList.remove('hidden');
+            document.getElementById('analysisEmpty').classList.add('hidden');
+            document.getElementById('analysisResults').classList.add('hidden');
+            document.getElementById('analysisFooter').classList.add('hidden');
+            document.getElementById('analysisLoader').classList.remove('hidden');
 
             setTimeout(() => {
-                loader.classList.add('hidden');
-                resultContent.classList.remove('hidden');
-                badge.classList.remove('hidden');
-                footer.classList.remove('hidden');
+                document.getElementById('analysisLoader').classList.add('hidden');
+                document.getElementById('analysisResults').classList.remove('hidden');
+                document.getElementById('analysisFooter').classList.remove('hidden');
 
-                // Dynamic Response Generation based on Category & Input Keywords
-                let summary = "";
-                let findings = [];
-                let explanation = "";
-                let recommendations = [];
+                const riskBadge = document.getElementById('riskBadge');
+                riskBadge.classList.remove('hidden');
 
-                const lowerText = text.toLowerCase();
+                const cat = document.getElementById('reportCategory').value;
+                const paramTable = document.getElementById('resParamTable');
 
-                if(category === 'lab' || lowerText.includes('hemoglobin') || lowerText.includes('wbc')) {
-                    summary = "ল্যাব রিপোর্টে রক্তে হিমোগ্লোবিনের মাত্রা স্বাভাবিকের চেয়ে কম এবং শ্বেত রক্তকণিকার (WBC) পরিমাণ বেশি দেখা যাচ্ছে।";
-                    findings = [
-                        "হিমোগ্লোবিন: ৯.২ g/dL (হালকা অ্যানিমিয়া বা রক্তস্বল্পতার লক্ষণ)",
-                        "শ্বেত রক্তকণিকা (WBC): ১৪,৫০০ /uL (শরীরে কোনো সংক্রমণ বা ইনফেকশনের উপস্থিতির ইঙ্গিত)"
-                    ];
-                    explanation = "শ্বেত রক্তকণিকা বাড়া মানে শরীর কোনো ব্যাকটেরিয়া বা ইনফেকশনের বিরুদ্ধে লড়াই করছে। অন্যদিকে হিমোগ্লোবিন কম থাকার কারণে কিছুটা দুর্বলতা বা ক্লান্তি অনুভব হতে পারে।";
-                    recommendations = [
-                        "একজন এমবিবিএস / মেডিসিন বিশেষজ্ঞ ডাক্তারের পরামর্শ নিয়ে অ্যান্টিবায়োটিক বা প্রয়োজনীয় ওষুধ গ্রহণ করা।",
-                        "আয়রন সমৃদ্ধ খাবার যেমন: পালং শাক, কচু, কলিজা, ডালিম ইত্যাদি বেশি খান।",
-                        "পর্যাপ্ত বিশ্রাম নিন এবং প্রচুর পানি পান করুন।"
-                    ];
-                } else if(category === 'xray' || lowerText.includes('x-ray') || lowerText.includes('chest') || lowerText.includes('pneumonia')) {
-                    summary = "বুকের এক্স-রে রিপোর্টে ফুসফুসের ডান নিচের অংশে ইনফেকশন বা পানি জমার হালকা আলামত পাওয়া গেছে।";
-                    findings = [
-                        "Patchy Infiltration / Opacities (ফুসফুসে প্রদাহ)",
-                        "হৃদপিণ্ডের আকৃতি স্বাভাবিক রয়েছে"
-                    ];
-                    explanation = "এটি নিউমোনিয়া বা বুকে ঠান্ডা লাগার প্রাথমিক লক্ষণ হতে পারে। ফুসফুসের বায়ুনালীতে হালকা ইনফেকশন হওয়ার কারণে কাশি বা শ্বাসকষ্ট হতে পারে।";
-                    recommendations = [
-                        "অবিলম্বে বক্ষব্যাধি বা মেডিসিন বিশেষজ্ঞ দেখান।",
-                        "ধোঁয়া, ধূলোবালি ও ঠান্ডা বাতাস এড়িয়ে চলুন।",
-                        "ডাক্তারের পরামর্শ অনুযায়ী নেবুলাইজার বা অ্যান্টিবায়োটিক প্রয়োজন হতে পারে।"
-                    ];
-                } else if(category === 'ecg' || lowerText.includes('ecg') || lowerText.includes('bpm')) {
-                    summary = "ইসিজি রিপোর্টে হৃদস্পন্দন স্বাভাবিকের চেয়ে কিছুটা দ্রুত (Sinus Tachycardia) দেখা গেছে।";
-                    findings = [
-                        "হৃদস্পন্দনের হার: ১১৮ bpm (স্বাভাবিক: ৬০-১০০ bpm)",
-                        "কোনো মারাত্মক হার্ট অ্যাটাক বা স্ট্রোকের জরুরি আলামত পাওয়া যায়নি"
-                    ];
-                    explanation = "অতিরিক্ত দুশ্চিন্তা, জ্বর, পানিশূন্যতা বা অতিরিক্ত চা-কফি পানের কারণে সাময়িকভাবে হৃদস্পন্দন বেড়ে যেতে পারে।";
-                    recommendations = [
-                        "মানসিক চাপ বা দুশ্চিন্তা কমানোর জন্য গভীর শ্বাস নিন (Deep Breathing)।",
-                        "চা, কফি বা ক্যাফেইন জাতীয় পানীয় খাওয়া কমান।",
-                        "বুকে ব্যথা বা অস্বস্তি অনুভূত হলে দ্রুত কার্ডিওলোজিস্টের সাথে কথা বলুন।"
-                    ];
-                } else if(category === 'mri' || category === 'ct' || lowerText.includes('mri') || lowerText.includes('disc')) {
-                    summary = "স্পাইন বা মেরুদণ্ডের এমআরআই রিপোর্টে ডিস্ক প্রোট্রুশন বা রগ চেপে যাওয়ার লক্ষণ রয়েছে।";
-                    findings = [
-                        "L4-L5 লেভেলে ডিস্ক চেপে গিয়ে নার্ভে চাপ সৃষ্টি করেছে",
-                        "সামান্য ক্যানাল স্টেনোসিস বিদ্যমান"
-                    ];
-                    explanation = "কোমর বা মেরুদণ্ডের হাড়ের মাঝের ডিস্ক স্থানচ্যুত হওয়ার কারণে পিঠে, কোমরে বা পায়ে ব্যথা ছড়াতে পারে।";
-                    recommendations = [
-                        "ভারী কোনো জিনিস তোলা থেকে বিরত থাকুন।",
-                        "ফিজিওথেরাপিস্ট বা নিউরো-মেডিসিন ডাক্তারের পরামর্শ নিন।",
-                        "সোজা হয়ে বসুন এবং শক্ত বিছানায় ঘুমানোর অভ্যাস করুন।"
-                    ];
+                if(cat === 'lab' || text.toLowerCase().includes('hemoglobin')) {
+                    riskBadge.className = 'text-xs font-bold px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/30';
+                    riskBadge.innerText = 'ঝুঁকি: হালকা মাঝারি (Mild Risk)';
+
+                    document.getElementById('resSummary').innerText = "রক্তের ল্যাব রিপোর্টে হিমোগ্লোবিন স্বাভাবিকের চেয়ে কম (অ্যানিমিয়া) এবং শ্বেত রক্তকণিকা (WBC) বেশি পাওয়া গেছে যা ইনফেকশনের সংকেত দেয়।";
+                    
+                    paramTable.innerHTML = `
+                        <tr>
+                            <td class="py-2 px-3 font-semibold">Hemoglobin</td>
+                            <td class="py-2 px-3 text-amber-500 font-bold">9.4 g/dL</td>
+                            <td class="py-2 px-3 text-slate-400">12.0 - 16.0 g/dL</td>
+                            <td class="py-2 px-3"><span class="bg-amber-500/10 text-amber-500 text-[10px] px-2 py-0.5 rounded">কম (Low)</span></td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-semibold">WBC Count</td>
+                            <td class="py-2 px-3 text-rose-500 font-bold">14,800 /uL</td>
+                            <td class="py-2 px-3 text-slate-400">4,000 - 11,000 /uL</td>
+                            <td class="py-2 px-3"><span class="bg-rose-500/10 text-rose-500 text-[10px] px-2 py-0.5 rounded">উচ্চ (High)</span></td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 font-semibold">Platelets</td>
+                            <td class="py-2 px-3 text-emerald-500 font-bold">210,000 /uL</td>
+                            <td class="py-2 px-3 text-slate-400">150,000 - 450,000</td>
+                            <td class="py-2 px-3"><span class="bg-emerald-500/10 text-emerald-500 text-[10px] px-2 py-0.5 rounded">স্বাভাবিক</span></td>
+                        </tr>
+                    `;
+
+                    document.getElementById('resExplanation').innerText = "শ্বেত রক্তকণিকা বাড়তি থাকায় ইঙ্গিত করে শরীর কোনো ব্যাকটেরিয়াল সংক্রমণের বিরুদ্ধে লড়ছে। হিমোগ্লোবিন কম থাকার কারণে ক্লান্তি ও মাথা ঘোরা অনুভূত হতে পারে।";
+                    
+                    document.getElementById('resActionSteps').innerHTML = `
+                        <li>রেজিস্টার্ড মেডিসিন বিশেষজ্ঞ ডাক্তার দেখিয়ে অ্যান্টিবায়োটিক ও প্রয়োজনীয় চিকিৎসা শুরু করুন।</li>
+                        <li>আয়রন ও ভিটামিন সি সমৃদ্ধ খাবার (যেমন: কচু শাক, ডিম, ফলমূল) খাদ্যতালিকায় বাড়ান।</li>
+                    `;
                 } else {
-                    summary = "আপনার প্রদানকৃত টেক্সটের ভিত্তিতে প্রাথমিক স্বাস্থ্য পর্যালোচনা প্রস্তুত করা হয়েছে।";
-                    findings = ["রিপোর্টে উল্লেখকৃত মানসমূহে আংশিক তারতম্য রয়েছে।"];
-                    explanation = "চিকিৎসা বিজ্ঞানে যেকোনো রিপোর্টের সূক্ষ্ম মূল্যায়নের জন্য রোগীর বর্তমান শারীরিক লক্ষণ ও ইতিহাস পর্যবেক্ষণ করা জরুরি।";
-                    recommendations = [
-                        "রিপোর্টটি মূল প্যাথলজি ল্যাব বা ডাক্তারের প্যাডে মিলিয়ে নিশ্চিত হোন।",
-                        "অভিজ্ঞ চিকিৎসকের পরামর্শ নিন।"
-                    ];
+                    riskBadge.className = 'text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30';
+                    riskBadge.innerText = 'ঝুঁকি: স্বাভাবিক (Normal Range)';
+
+                    document.getElementById('resSummary').innerText = "রিপোর্টে কোনো তীব্র বা জরুরি অস্বাভাবিকতা পরিলক্ষিত হয়নি।";
+                    
+                    paramTable.innerHTML = `
+                        <tr>
+                            <td class="py-2 px-3 font-semibold">General Finding</td>
+                            <td class="py-2 px-3 text-emerald-500 font-bold">Within Limits</td>
+                            <td class="py-2 px-3 text-slate-400">Standard Baseline</td>
+                            <td class="py-2 px-3"><span class="bg-emerald-500/10 text-emerald-500 text-[10px] px-2 py-0.5 rounded">স্বাভাবিক</span></td>
+                        </tr>
+                    `;
+
+                    document.getElementById('resExplanation').innerText = "সংগ্রহকৃত টেক্সট অনুযায়ী অধিকাংশ মানই স্বাভাবিক সীমার মধ্যে আছে।";
+                    document.getElementById('resActionSteps').innerHTML = `
+                        <li>পর্যাপ্ত পানি পান ও পুষ্টিকর খাবার গ্রহণ বজায় রাখুন।</li>
+                        <li>নিয়মিত রুটিন চেকআপ করান।</li>
+                    `;
                 }
 
-                // Render Results
-                document.getElementById('resSummary').innerText = summary;
-                document.getElementById('resExplanation').innerText = explanation;
-
-                const findUl = document.getElementById('resFindings');
-                findUl.innerHTML = findings.map(f => `<li>${f}</li>`).join('');
-
-                const recUl = document.getElementById('resRecommendations');
-                recUl.innerHTML = recommendations.map(r => `<li>${r}</li>`).join('');
-
-            }, 1200);
+            }, 1000);
         }
 
-        // Symptom Checker Logic
-        function checkSymptoms() {
-            const checkboxes = document.querySelectorAll('.symptom-check:checked');
-            const details = document.getElementById('symptomDetails').value.trim();
-            const resultDiv = document.getElementById('symptomResult');
-            const outputDiv = document.getElementById('symptomOutput');
+        // Triage System Engine
+        let selectedSystem = '';
+        function selectBodySystem(sysKey) {
+            selectedSystem = sysKey;
+            document.querySelectorAll('.sys-btn').forEach(b => b.classList.remove('border-cyan-500', 'bg-cyan-500/10'));
+            const btn = document.getElementById('sys-' + sysKey);
+            if(btn) btn.classList.add('border-cyan-500', 'bg-cyan-500/10');
+        }
 
-            let selected = [];
-            checkboxes.forEach(cb => selected.push(cb.value));
+        function runSymptomTriage() {
+            const box = document.getElementById('triageResultBox');
+            const level = document.getElementById('triageLevel');
+            const content = document.getElementById('triageContent');
+            const severity = document.getElementById('severityRange').value;
 
-            if(selected.length === 0 && !details) {
-                alert('অনুগ্রহ করে অন্তত একটি লক্ষণ নির্বাচন করুন অথবা বক্সে লিখুন।');
-                return;
-            }
+            box.classList.remove('hidden');
 
-            resultDiv.classList.remove('hidden');
-
-            let outputHtml = `<p><strong>চিহ্নিত লক্ষণসমূহ:</strong> ${selected.join(', ') || 'অন্যান্য বিবরণ প্রদান করা হয়েছে'}</p>`;
-
-            if(selected.includes('জ্বর') || selected.includes('কাশি')) {
-                outputHtml += `
-                    <div class="p-3 bg-amber-100/60 rounded-lg border border-amber-200 mt-2">
-                        <strong>সম্ভাব্য কারণ:</strong> ভাইরাল ফিভার, সাধারণ সিজনাল ফ্লু অথবা শ্বাসতন্ত্রের ইনফেকশন।<br>
-                        <strong>পরামর্শ:</strong> প্রচুর পানি পান করুন, হালকা গরম পানিতে কুলি করুন এবং বিশ্রামে থাকুন। জ্বর ১০০.৪°F এর বেশি থাকলে ডাক্তারের পরামর্শে প্যারাসিটামল গ্রহণ করতে পারেন।
-                    </div>
-                `;
-            } else if(selected.includes('বুক ব্যথা') || selected.includes('শ্বাসকষ্ট')) {
-                outputHtml += `
-                    <div class="p-3 bg-red-100/80 rounded-lg border border-red-300 mt-2 text-red-900">
-                        <strong>জরুরি সতর্কতা:</strong> বুক ব্যথা বা শ্বাসকষ্ট থাকলে তা অবহেলা করবেন না! এটি হৃদরোগ বা ফুসফুসের তীব্র সমস্যার লক্ষণ হতে পারে। দ্রুত নিকটস্থ কার্ডিওলজি বা হাসপাতালের ইমার্জেন্সিতে যোগাযোগ করুন।
-                    </div>
-                `;
+            if(severity >= 8) {
+                level.className = 'text-xs font-bold px-3 py-0.5 rounded-full bg-rose-500 text-white';
+                level.innerText = 'জরুরি মেডিকেল কেয়ার প্রয়োজন';
+                content.innerHTML = "<strong>সতর্কতা:</strong> আপনার লক্ষণের তীব্রতা ৮ বা তার বেশি। বুকে তীব্র ব্যথা, অতিরিক্ত শ্বাসকষ্ট বা প্রচণ্ড রক্তপাত থাকলে সময় ব্যয় না করে নিকটস্থ স্পেশালাইজড হাসপাতালে যোগাযোগ করুন।";
             } else {
-                outputHtml += `
-                    <div class="p-3 bg-blue-100/60 rounded-lg border border-blue-200 mt-2">
-                        <strong>পরামর্শ:</strong> পর্যাপ্ত বিশ্রাম নিন, স্বাস্থ্যকর খাবার খান এবং লক্ষণ ২-৩ দিনের বেশি স্থায়ী হলে রেজিস্টার্ড ডাক্তারের পরামর্শ নিন।
+                level.className = 'text-xs font-bold px-3 py-0.5 rounded-full bg-emerald-500 text-white';
+                level.innerText = 'প্রাথমিক কেয়ার ও অবজারভেশন';
+                content.innerHTML = "আপনার শারীরিক অসুবিধাগুলো প্রাথমিক পর্যায়ের মনে হচ্ছে। প্রচুর পানি পান করুন, পর্যাপ্ত বিশ্রাম নিন এবং প্রয়োজনে চিকিৎসকের অনলাইন কনসালটেন্সি নিন।";
+            }
+        }
+
+        // Chat Box Simulation
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if(!msg) return;
+
+            const chatWindow = document.getElementById('chatMessages');
+
+            // User Message Bubble
+            chatWindow.innerHTML += `
+                <div class="flex items-start gap-2.5 justify-end">
+                    <div class="bg-cyan-600 text-white p-3 rounded-2xl rounded-tr-none text-xs max-w-[80%] leading-relaxed">
+                        ${msg}
+                    </div>
+                </div>
+            `;
+
+            input.value = '';
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            // AI Reply Simulation
+            setTimeout(() => {
+                chatWindow.innerHTML += `
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-7 h-7 rounded-lg bg-cyan-600 text-white flex items-center justify-center text-xs flex-shrink-0">AI</div>
+                        <div class="bg-slate-200 dark:bg-navy-800 text-slate-800 dark:text-slate-100 p-3 rounded-2xl rounded-tl-none text-xs max-w-[80%] leading-relaxed">
+                            ধন্যবাদ আপনার প্রশ্নের জন্য। আপনার জিজ্ঞাসা অনুযায়ী সঠিক পরামর্শ হলো নিয়মিত সঠিক খাদ্যাভ্যাস মেনে চলা ও প্রয়োজনে ডাক্তারের পরামর্শ নেয়া।
+                        </div>
                     </div>
                 `;
-            }
-
-            outputDiv.innerHTML = outputHtml;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }, 800);
         }
 
-        // Daily Health Tip Generator
-        function generateTip(ageGroup) {
-            const tipBox = document.getElementById('tipBox');
-            tipBox.classList.remove('hidden');
+        function sendQuickPrompt(txt) {
+            document.getElementById('chatInput').value = txt;
+            sendChatMessage();
+        }
 
-            let tip = "";
-            if(ageGroup.includes('18-35')) {
-                tip = "🎯 <strong>তরুণদের জন্য টিপস:</strong> প্রসেসড ফাস্টফুড ও কোল্ড ড্রিঙ্কস পরিহার করুন। রাত জেগে মোবাইল ব্যবহার না করে সময়মতো ঘুমানোর চেষ্টা করুন। দৈনিক ৩০ মিনিট দৌড়ানো বা ফ্রি-হ্যান্ড এক্সারসাইজ করুন।";
-            } else if(ageGroup.includes('36-50')) {
-                tip = "🩺 <strong>মধ্যবয়সীদের জন্য টিপস:</strong> বছরে অন্তত একবার হলেও ডায়াবেটিস, ব্লাড প্রেশার ও লিপিড প্রোফাইল পরীক্ষা করান। খাবারে কাঁচা লবণ ও অতিরিক্ত চিনি খাওয়া নিয়ন্ত্রণ করুন।";
+        // Simulated Voice Input Toggle
+        let isVoiceActive = false;
+        function toggleVoiceSim() {
+            isVoiceActive = !isVoiceActive;
+            const wave = document.getElementById('voiceWaveform');
+            const btn = document.getElementById('voiceBtn');
+
+            if(isVoiceActive) {
+                wave.classList.remove('hidden');
+                btn.classList.add('text-rose-500');
             } else {
-                tip = "👵 <strong>প্রবীণদের জন্য টিপস:</strong> নিয়মিত হালকা হাঁটাহাঁটি করুন, ক্যালসিয়াম ও ভিটামিন ডি সমৃদ্ধ খাবার গ্রহণ করুন। নিয়মিত প্রেসক্রিপশনের ওষুধ সময়মতো সেবন করুন এবং অতিরিক্ত সিঁড়ি ব্যবহার সাবধানে করুন।";
+                wave.classList.add('hidden');
+                btn.classList.remove('text-rose-500');
             }
-
-            tipBox.innerHTML = tip;
         }
+
+        // BMI Calculation
+        function calculateBMI() {
+            const w = parseFloat(document.getElementById('bmiWeight').value);
+            const h = parseFloat(document.getElementById('bmiHeight').value) / 100;
+            if(w && h) {
+                const bmi = (w / (h * h)).toFixed(1);
+                document.getElementById('bmiValue').innerText = bmi;
+                const status = document.getElementById('bmiStatus');
+                if(bmi < 18.5) {
+                    status.innerText = "কম ওজন (Underweight)";
+                    status.className = "block text-xs font-bold text-amber-500 mt-0.5";
+                } else if(bmi <= 24.9) {
+                    status.innerText = "স্বাভাবিক ওজন (Normal)";
+                    status.className = "block text-xs font-bold text-emerald-500 mt-0.5";
+                } else {
+                    status.innerText = "অতিরিক্ত ওজন (Overweight)";
+                    status.className = "block text-xs font-bold text-rose-500 mt-0.5";
+                }
+            }
+        }
+
+        // PDF Generation Export Function
+        function exportFullPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(16);
+            doc.text("AI DOCTOR - Patient Medical Summary", 20, 20);
+            doc.setFontSize(10);
+            doc.text("Generated via AI Enterprise Health Portal", 20, 30);
+            doc.text("Risk Status: Normal / Analyzed", 20, 40);
+            doc.text("Date: " + new Date().toLocaleDateString(), 20, 50);
+            doc.save("AI_Doctor_Health_Report.pdf");
+        }
+
+        // Initialize Chart.js Vitals Graphic on Load
+        window.onload = function() {
+            const ctx = document.getElementById('vitalsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['১ জানু', '৫ জানু', '১০ জানু', '১৫ জানু', '২০ জানু', '২৫ জানু'],
+                    datasets: [{
+                        label: 'Systolic BP',
+                        data: [120, 122, 118, 125, 121, 120],
+                        borderColor: '#0ea5e9',
+                        tension: 0.4
+                    }, {
+                        label: 'Pulse Rate',
+                        data: [72, 75, 70, 78, 74, 72],
+                        borderColor: '#10b981',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8' } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' } },
+                        y: { ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        };
     </script>
 </body>
 </html>
